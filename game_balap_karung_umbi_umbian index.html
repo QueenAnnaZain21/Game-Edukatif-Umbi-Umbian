@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Balap Karung: Edukasi Umbi-Umbian</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Font Plus Jakarta Sans -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #15803d 0%, #052e16 100%);
+            min-height: 100vh;
+            color: #0f172a;
+            user-select: none;
+        }
+
+        /* Canvas / Track Styles */
+        .track-bg {
+            background: #fef08a;
+            background-image: radial-gradient(#ca8a04 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+
+        /* Hop Animation */
+        @keyframes hopAnim {
+            0% { transform: translateY(0) scale(1, 1); }
+            30% { transform: translateY(-28px) scale(0.9, 1.1) rotate(-3deg); }
+            70% { transform: translateY(-10px) scale(1.05, 0.95); }
+            100% { transform: translateY(0) scale(1, 1); }
+        }
+
+        .animate-hop {
+            animation: hopAnim 0.5s ease-in-out;
+        }
+
+        /* Stumble Shake Animation */
+        @keyframes stumbleAnim {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            20% { transform: translateX(-8px) rotate(-8deg); }
+            40% { transform: translateX(8px) rotate(8deg); }
+            60% { transform: translateX(-5px) rotate(-4deg); }
+            80% { transform: translateX(5px) rotate(4deg); }
+        }
+
+        .animate-stumble {
+            animation: stumbleAnim 0.6s ease-in-out;
+        }
+
+        /* Confetti Canvas */
+        #confettiCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-3 md:p-6 min-h-screen">
+
+    <div class="w-full max-w-4xl glass-panel rounded-2xl shadow-2xl overflow-hidden border border-emerald-400/30 flex flex-col relative">
+        <canvas id="confettiCanvas"></canvas>
+
+        <!-- HEADER GAME -->
+        <header class="bg-gradient-to-r from-emerald-800 to-green-900 text-white p-4 md:p-5 flex flex-wrap items-center justify-between border-b border-emerald-700/50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
+                    <i class="fa-solid fa-person-running text-amber-950 text-xl md:text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-amber-300">BALAP KARUNG UMBI</h1>
+                    <p class="text-xs md:text-sm text-emerald-200 font-medium">Lompat Menuju Finish dengan Kuis Edukasi!</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-2 sm:mt-0">
+                <div class="bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-600/40 text-center">
+                    <span class="text-[10px] uppercase tracking-wider text-emerald-300 block">Skor Saya</span>
+                    <span id="scoreDisplay" class="text-lg md:text-xl font-black text-amber-400">0</span>
+                </div>
+                <button id="soundToggleBtn" onclick="toggleSound()" class="p-2.5 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-white transition text-sm">
+                    <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- SCREEN 1: START SCREEN -->
+        <div id="startScreen" class="p-6 md:p-10 text-center flex flex-col items-center justify-center min-h-[460px]">
+            <div class="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mb-6 shadow-inner border-4 border-amber-400 animate-bounce">
+                <span class="text-5xl">🥔</span>
+            </div>
+            <h2 class="text-2xl md:text-3xl font-extrabold text-emerald-950 mb-3">Selamat Datang di Arena Balap Umbi!</h2>
+            <p class="text-gray-600 max-w-lg mb-8 text-sm md:text-base leading-relaxed">
+                Pilihlah jawaban kuis materi **Umbi-Umbian** dengan benar untuk membantu **Si Ubi Jalar** melompat cepat mengalahkan lawan-lawannya!
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-xl mb-8 text-left text-xs md:text-sm">
+                <div class="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 flex items-start gap-2.5">
+                    <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5"></i>
+                    <div>
+                        <strong class="block text-emerald-900">Jawab Benar</strong>
+                        <span class="text-gray-600">Lompat maju pesat (+15% jarak).</span>
+                    </div>
+                </div>
+                <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 flex items-start gap-2.5">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5"></i>
+                    <div>
+                        <strong class="block text-amber-900">Jawab Salah</strong>
+                        <span class="text-gray-600">Tersandung diam di tempat.</span>
+                    </div>
+                </div>
+                <div class="bg-blue-50 p-3.5 rounded-xl border border-blue-200 flex items-start gap-2.5">
+                    <i class="fa-solid fa-robot text-blue-600 mt-0.5"></i>
+                    <div>
+                        <strong class="block text-blue-900">Lawan AI</strong>
+                        <span class="text-gray-600">AI otomatis maju perlahan.</span>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-amber-950 font-black text-lg rounded-xl shadow-lg transform hover:-translate-y-0.5 transition active:translate-y-0 flex items-center gap-3">
+                <i class="fa-solid fa-play"></i> MULAI BALAPAN!
+            </button>
+        </div>
+
+        <!-- SCREEN 2: GAMEPLAY SCREEN (RACE + QUIZ) -->
+        <div id="gameplayScreen" class="hidden flex-col">
+            <!-- ARENA BALAP / TRACK VISUAL -->
+            <div class="track-bg p-4 md:p-6 border-b-4 border-amber-600/40 relative overflow-hidden">
+                <div class="text-xs font-bold text-amber-900 uppercase tracking-wider mb-2 flex justify-between items-center">
+                    <span><i class="fa-solid fa-flag-checkered mr-1"></i> Lintasan Balap Karung</span>
+                    <span id="raceStatusText" class="text-emerald-800">Siap-siap!</span>
+                </div>
+
+                <!-- RACER 1: PLAYER (SI UBI) -->
+                <div class="mb-3">
+                    <div class="flex justify-between text-[11px] font-bold text-gray-700 mb-1">
+                        <span class="text-emerald-800 font-extrabold"><i class="fa-solid fa-user text-emerald-600"></i> Kamu (Si Ubi)</span>
+                        <span id="playerProgressText">0%</span>
+                    </div>
+                    <div class="h-10 bg-amber-200/80 rounded-full relative border-2 border-amber-400 overflow-hidden shadow-inner">
+                        <!-- Finish line visual -->
+                        <div class="absolute right-0 top-0 bottom-0 w-6 bg-repeat-y bg-[length:12px_12px]" style="background-image: linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%);"></div>
+                        
+                        <!-- Player Avatar in Sack -->
+                        <div id="playerAvatar" class="absolute top-1/2 -translate-y-1/2 left-0 transition-all duration-500 flex items-center" style="left: 2%;">
+                            <div id="playerSack" class="relative text-2xl md:text-3xl filter drop-shadow-md">
+                                🍠
+                                <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-bold">KAMU</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RACER 2: AI 1 (SI SINGKONG) -->
+                <div class="mb-3">
+                    <div class="flex justify-between text-[11px] font-bold text-gray-700 mb-1">
+                        <span class="text-amber-800 font-bold"><i class="fa-solid fa-robot text-amber-600"></i> AI 1 (Si Singkong)</span>
+                        <span id="ai1ProgressText">0%</span>
+                    </div>
+                    <div class="h-8 bg-amber-200/50 rounded-full relative border border-amber-300/80 overflow-hidden">
+                        <div class="absolute right-0 top-0 bottom-0 w-5 bg-repeat-y bg-[length:10px_10px]" style="background-image: linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%);"></div>
+                        <div id="ai1Avatar" class="absolute top-1/2 -translate-y-1/2 left-0 transition-all duration-700 text-xl" style="left: 2%;">
+                            🪵
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RACER 3: AI 2 (SI KENTANG) -->
+                <div>
+                    <div class="flex justify-between text-[11px] font-bold text-gray-700 mb-1">
+                        <span class="text-blue-800 font-bold"><i class="fa-solid fa-robot text-blue-600"></i> AI 2 (Si Kentang)</span>
+                        <span id="ai2ProgressText">0%</span>
+                    </div>
+                    <div class="h-8 bg-amber-200/50 rounded-full relative border border-amber-300/80 overflow-hidden">
+                        <div class="absolute right-0 top-0 bottom-0 w-5 bg-repeat-y bg-[length:10px_10px]" style="background-image: linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(-45deg, #000 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #000 75%), linear-gradient(-45deg, transparent 75%, #000 75%);"></div>
+                        <div id="ai2Avatar" class="absolute top-1/2 -translate-y-1/2 left-0 transition-all duration-700 text-xl" style="left: 2%;">
+                            🥔
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KUIS AREA -->
+            <div class="p-5 md:p-7 flex-grow flex flex-col justify-between bg-white">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span id="questionNum" class="text-xs font-extrabold uppercase px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                            Pertanyaan 1 / 10
+                        </span>
+                        <span id="categoryTag" class="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-md">
+                            Klasifikasi Umbi
+                        </span>
+                    </div>
+
+                    <h3 id="questionText" class="text-lg md:text-xl font-bold text-gray-900 leading-snug mb-5">
+                        Memuat pertanyaan...
+                    </h3>
+
+                    <!-- MCQ OPTIONS -->
+                    <div id="optionsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <!-- Dynamic Buttons -->
+                    </div>
+                </div>
+
+                <!-- FEEDBACK & EXPLANATION BANNER -->
+                <div id="feedbackBox" class="hidden p-4 rounded-xl text-sm transition-all duration-300 mt-2">
+                    <div class="flex items-start gap-3">
+                        <i id="feedbackIcon" class="text-xl mt-0.5"></i>
+                        <div>
+                            <strong id="feedbackTitle" class="block font-bold mb-0.5 text-base"></strong>
+                            <p id="feedbackText" class="text-xs md:text-sm leading-relaxed"></p>
+                        </div>
+                    </div>
+                    <button id="nextBtn" onclick="nextQuestion()" class="mt-3 w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg transition text-xs md:text-sm flex items-center justify-center gap-2">
+                        Lanjut Pertanyaan Berikutnya <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: RESULT SCREEN -->
+        <div id="resultScreen" class="hidden p-6 md:p-10 text-center flex-col items-center justify-center">
+            <div id="rankBadge" class="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-4xl md:text-5xl mb-4 shadow-xl border-4 mx-auto">
+                🥇
+            </div>
+
+            <h2 id="resultTitle" class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1">
+                Luar Biasa! Kamu Juara 1!
+            </h2>
+            <p id="resultSubtitle" class="text-gray-600 text-sm md:text-base mb-6">
+                Si Ubi berhasil melompat melewati garis finish pertama kali!
+            </p>
+
+            <div class="grid grid-cols-3 gap-3 w-full max-w-md mb-8">
+                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                    <span class="text-[11px] text-emerald-700 uppercase font-bold block">Peringkat</span>
+                    <strong id="finalRankText" class="text-xl md:text-2xl font-black text-emerald-900">#1</strong>
+                </div>
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                    <span class="text-[11px] text-amber-700 uppercase font-bold block">Total Skor</span>
+                    <strong id="finalScoreText" class="text-xl md:text-2xl font-black text-amber-900">1000</strong>
+                </div>
+                <div class="bg-blue-50 p-3 rounded-xl border border-blue-200">
+                    <span class="text-[11px] text-blue-700 uppercase font-bold block">Akurasi</span>
+                    <strong id="finalAccuracyText" class="text-xl md:text-2xl font-black text-blue-900">100%</strong>
+                </div>
+            </div>
+
+            <!-- RECAP SUMMARY -->
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left w-full max-w-md mb-8 text-xs md:text-sm">
+                <h4 class="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap text-emerald-600"></i> Catatan Pembelajaran:
+                </h4>
+                <p class="text-gray-600 leading-relaxed">
+                    Umbi-umbian seperti Singkong, Ubi Jalar, Kentang, dan Talas adalah sumber karbohidrat bebas gluten kaya vitamin dan serat yang sangat potensial untuk diversifikasi pangan lokal!
+                </p>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="restartGame()" class="px-6 py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition flex items-center gap-2 text-sm md:text-base">
+                    <i class="fa-solid fa-rotate-right"></i> Main Lagi
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* ==========================================
+           QUESTION BANK (UMBI-UMBIAN)
+        ========================================== */
+        const questions = [
+            {
+                category: "Klasifikasi Umbi",
+                question: "Manakah di bawah ini yang termasuk dalam kelompok Umbi Batang?",
+                options: ["Singkong & Wortel", "Kentang & Talas", "Bengkuang & Lobak", "Bawang Merah & Bawang Putih"],
+                correct: 1,
+                explanation: "Kentang dan Talas menyimpan cadangan makanan pada pembengkakan batang di dalam tanah serta memiliki mata tunas."
+            },
+            {
+                category: "Kandungan Gizi",
+                question: "Ubi Jalar Ungu memiliki warna ungu yang khas karena kaya akan senyawa antioksidan tinggi yaitu...",
+                options: ["Beta-karoten", "Antosianin", "Kalsium", "Vitamin B6"],
+                correct: 1,
+                explanation: "Antosianin adalah pigmen alami penangkap radikal bebas yang melimpah pada ubi jalar ungu."
+            },
+            {
+                category: "Tepung Turunan",
+                question: "Apa kepanjangan dari tepung MOCAF yang dibuat dari fermentasi singkong?",
+                options: ["Modified Cassava Flour", "Modern Cassava Food", "Main Organic Cassava Flour", "Micro Organism Cassava Flour"],
+                correct: 0,
+                explanation: "MOCAF (Modified Cassava Flour) adalah tepung singkong terfermentasi yang sifatnya mirip terigu gandum."
+            },
+            {
+                category: "Olahan Pangan",
+                question: "Tepung tapioka merupakan hasil ekstraksi pati murni dari umbi...",
+                options: ["Kentang", "Ubi Jalar", "Singkong", "Talas"],
+                correct: 2,
+                explanation: "Tepung Tapioka dibuat dari pati ekstrak Singkong (Ubi Kayu) yang sering digunakan sebagai pengental adonan seperti Cireng & Boba."
+            },
+            {
+                category: "Manfaat Kesehatan",
+                question: "Tepung Pati Garut sangat direkomendasikan bagi penderita asam lambung (Maag) karena...",
+                options: ["Rasanya sangat manis", "Mudah dicerna & lembut di lambung", "Tinggi kandungan lemak", "Mengandung kadar air 90%"],
+                correct: 1,
+                explanation: "Pati Garut memiliki struktur pati yang sangat halus dan mudah dicerna sehingga tidak mengiritasi dinding lambung."
+            },
+            {
+                category: "Gizi & Keunggulan",
+                question: "Ubi Jalar Oranye sangat baik untuk kesehatan mata karena kaya akan kandungan...",
+                options: ["Beta-karoten (Pro-Vitamin A)", "Gluten", "Vitamin K", "Kalsium tinggi"],
+                correct: 0,
+                explanation: "Warna oranye menandakan tingginya kandungan Beta-Karoten yang diubah tubuh menjadi Vitamin A."
+            },
+            {
+                category: "Diversifikasi Pangan",
+                question: "Salah satu keunggulan utama semua tepung berbasis umbi-umbian lokal dibandingkan tepung terigu adalah...",
+                options: ["Bebas Gluten (Gluten-Free)", "Mengandung pengawet buatan", "Hanya bisa dibuat kue basah", "Harganya mahal"],
+                correct: 0,
+                explanation: "Tepung umbi secara alami 100% Bebas Gluten (Gluten-Free), aman bagi penderita Celiac disease atau alergi gluten."
+            },
+            {
+                category: "Kandungan Nutrisi",
+                question: "Umbi Bengkuang memiliki kadar air tinggi (~86%) dan mengandung serat khusus penyubur bakteri baik pencernaan bernama...",
+                options: ["Inulin", "Glukosa", "Maltosa", "Laktosa"],
+                correct: 0,
+                explanation: "Inulin pada bengkuang berfungsi sebagai prebiotik alami untuk menjaga kesehatan saluran pencernaan."
+            },
+            {
+                category: "Klasifikasi Umbi",
+                question: "Singkong (Ubi Kayu) dan Bengkuang dikelompokkan secara botanical ke dalam...",
+                options: ["Umbi Batang", "Umbi Lapis", "Umbi Akar", "Umbi Daun"],
+                correct: 2,
+                explanation: "Singkong dan Bengkuang terbentuk dari pembengkakan modifikasi akar yang menampung cadangan makanan."
+            },
+            {
+                category: "Produk Olahan",
+                question: "Olahan kentang berupa serpihan tepung instan setengah jadi yang biasa dipakai untuk perkedel cepat saji disebut...",
+                options: ["Tapioka", "Potato Flakes", "MOCAF", "Taro Powder"],
+                correct: 1,
+                explanation: "Potato Flakes adalah serpihan kentang dehidrasi instan yang praktis diolah menjadi perkedel atau mashed potato."
+            }
+        ];
+
+        /* ==========================================
+           GAME STATE
+        ========================================== */
+        let currentQuestionIdx = 0;
+        let score = 0;
+        let correctAnswersCount = 0;
+        let isSoundOn = true;
+
+        let playerPos = 2; // in percentage
+        let ai1Pos = 2;
+        let ai2Pos = 2;
+
+        let isAnswered = false;
+
+        /* ==========================================
+           AUDIO SYNTHESIZER (WEB AUDIO API)
+        ========================================== */
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+        }
+
+        function playSound(type) {
+            if (!isSoundOn) return;
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'hop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'win') {
+                const notes = [400, 500, 600, 800];
+                notes.forEach((freq, idx) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g);
+                    g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(freq, now + idx * 0.12);
+                    g.gain.setValueAtTime(0.2, now + idx * 0.12);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.2);
+                    o.start(now + idx * 0.12);
+                    o.stop(now + idx * 0.12 + 0.2);
+                });
+            }
+        }
+
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            const icon = document.getElementById('soundIcon');
+            if (isSoundOn) {
+                icon.className = 'fa-solid fa-volume-high';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark';
+            }
+        }
+
+        /* ==========================================
+           GAME LOGIC
+        ========================================== */
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('gameplayScreen').classList.remove('hidden');
+            document.getElementById('gameplayScreen').classList.add('flex');
+
+            currentQuestionIdx = 0;
+            score = 0;
+            correctAnswersCount = 0;
+            playerPos = 2;
+            ai1Pos = 2;
+            ai2Pos = 2;
+
+            updateScoreDisplay();
+            updatePositions();
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            isAnswered = false;
+            const q = questions[currentQuestionIdx];
+
+            document.getElementById('questionNum').innerText = `Pertanyaan ${currentQuestionIdx + 1} / ${questions.length}`;
+            document.getElementById('categoryTag').innerText = q.category;
+            document.getElementById('questionText').innerText = q.question;
+
+            const grid = document.getElementById('optionsGrid');
+            grid.innerHTML = '';
+
+            document.getElementById('feedbackBox').classList.add('hidden');
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3.5 md:p-4 rounded-xl border-2 border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition font-medium text-sm md:text-base text-gray-800 flex items-center gap-3";
+                btn.innerHTML = `
+                    <span class="w-7 h-7 rounded-lg bg-gray-100 font-bold text-xs flex items-center justify-center text-gray-600 border border-gray-300 shrink-0">
+                        ${String.fromCharCode(65 + idx)}
+                    </span>
+                    <span>${opt}</span>
+                `;
+                btn.onclick = () => selectAnswer(idx);
+                grid.appendChild(btn);
+            });
+
+            document.getElementById('raceStatusText').innerText = "Pilih jawaban untuk melompat!";
+        }
+
+        function selectAnswer(selectedIdx) {
+            if (isAnswered) return;
+            isAnswered = true;
+
+            const q = questions[currentQuestionIdx];
+            const isCorrect = (selectedIdx === q.correct);
+
+            const gridButtons = document.getElementById('optionsGrid').children;
+
+            // Highlight buttons
+            for (let i = 0; i < gridButtons.length; i++) {
+                gridButtons[i].disabled = true;
+                gridButtons[i].classList.add('cursor-not-allowed');
+
+                if (i === q.correct) {
+                    gridButtons[i].className = "w-full text-left p-3.5 md:p-4 rounded-xl border-2 border-emerald-500 bg-emerald-100 font-bold text-sm md:text-base text-emerald-950 flex items-center gap-3";
+                } else if (i === selectedIdx && !isCorrect) {
+                    gridButtons[i].className = "w-full text-left p-3.5 md:p-4 rounded-xl border-2 border-rose-500 bg-rose-100 font-medium text-sm md:text-base text-rose-950 flex items-center gap-3";
+                }
+            }
+
+            // AI moves advance steadily
+            ai1Pos += Math.floor(Math.random() * 5) + 6; // 6-10%
+            ai2Pos += Math.floor(Math.random() * 5) + 5; // 5-9%
+
+            if (isCorrect) {
+                score += 100;
+                correctAnswersCount++;
+                playerPos += 12; // Hop forward significantly
+                playSound('correct');
+                playSound('hop');
+                triggerPlayerHop();
+                document.getElementById('raceStatusText').innerText = "Hore! Lompatanmu berhasil!";
+            } else {
+                playSound('wrong');
+                triggerPlayerStumble();
+                document.getElementById('raceStatusText').innerText = "Aduh! Kamu tersandung!";
+            }
+
+            // Cap at 90% before final calculation
+            playerPos = Math.min(playerPos, 90);
+            ai1Pos = Math.min(ai1Pos, 90);
+            ai2Pos = Math.min(ai2Pos, 90);
+
+            updateScoreDisplay();
+            updatePositions();
+            showFeedback(isCorrect, q.explanation);
+        }
+
+        function triggerPlayerHop() {
+            const playerSack = document.getElementById('playerSack');
+            playerSack.classList.remove('animate-hop', 'animate-stumble');
+            void playerSack.offsetWidth; // trigger reflow
+            playerSack.classList.add('animate-hop');
+        }
+
+        function triggerPlayerStumble() {
+            const playerSack = document.getElementById('playerSack');
+            playerSack.classList.remove('animate-hop', 'animate-stumble');
+            void playerSack.offsetWidth; // trigger reflow
+            playerSack.classList.add('animate-stumble');
+        }
+
+        function showFeedback(isCorrect, explanation) {
+            const box = document.getElementById('feedbackBox');
+            const icon = document.getElementById('feedbackIcon');
+            const title = document.getElementById('feedbackTitle');
+            const text = document.getElementById('feedbackText');
+
+            box.classList.remove('hidden');
+
+            if (isCorrect) {
+                box.className = "p-4 rounded-xl text-sm transition-all duration-300 mt-2 bg-emerald-50 border border-emerald-300 text-emerald-950";
+                icon.className = "fa-solid fa-circle-check text-emerald-600 text-xl mt-0.5";
+                title.innerText = "Jawaban Benar! (+100 Poin)";
+            } else {
+                box.className = "p-4 rounded-xl text-sm transition-all duration-300 mt-2 bg-rose-50 border border-rose-300 text-rose-950";
+                icon.className = "fa-solid fa-circle-xmark text-rose-600 text-xl mt-0.5";
+                title.innerText = "Jawaban Kurang Tepat!";
+            }
+
+            text.innerText = explanation;
+        }
+
+        function nextQuestion() {
+            currentQuestionIdx++;
+            if (currentQuestionIdx < questions.length && playerPos < 90) {
+                loadQuestion();
+            } else {
+                finishRace();
+            }
+        }
+
+        function updatePositions() {
+            document.getElementById('playerAvatar').style.left = `${playerPos}%`;
+            document.getElementById('ai1Avatar').style.left = `${ai1Pos}%`;
+            document.getElementById('ai2Avatar').style.left = `${ai2Pos}%`;
+
+            document.getElementById('playerProgressText').innerText = `${Math.min(100, Math.round((playerPos/90)*100))}%`;
+            document.getElementById('ai1ProgressText').innerText = `${Math.min(100, Math.round((ai1Pos/90)*100))}%`;
+            document.getElementById('ai2ProgressText').innerText = `${Math.min(100, Math.round((ai2Pos/90)*100))}%`;
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('scoreDisplay').innerText = score;
+        }
+
+        function finishRace() {
+            document.getElementById('gameplayScreen').classList.add('hidden');
+            document.getElementById('gameplayScreen').classList.remove('flex');
+            document.getElementById('resultScreen').classList.remove('hidden');
+            document.getElementById('resultScreen').classList.add('flex');
+
+            // Calculate Rank
+            let rank = 1;
+            if (ai1Pos > playerPos) rank++;
+            if (ai2Pos > playerPos) rank++;
+
+            const rankBadge = document.getElementById('rankBadge');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultSubtitle = document.getElementById('resultSubtitle');
+
+            if (rank === 1) {
+                rankBadge.innerText = "🥇";
+                rankBadge.className = "w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-4xl md:text-5xl mb-4 shadow-xl border-4 border-amber-400 bg-amber-100 mx-auto";
+                resultTitle.innerText = "Luar Biasa! Kamu Juara 1!";
+                resultSubtitle.innerText = "Si Ubi berhasil melompat melewati garis finish pertama kali!";
+                playSound('win');
+                launchConfetti();
+            } else if (rank === 2) {
+                rankBadge.innerText = "🥈";
+                rankBadge.className = "w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-4xl md:text-5xl mb-4 shadow-xl border-4 border-gray-300 bg-gray-100 mx-auto";
+                resultTitle.innerText = "Hebat! Kamu Juara 2!";
+                resultSubtitle.innerText = "Hampir menyusul! Pertahankan pemahaman materi umbi-umbianmu!";
+            } else {
+                rankBadge.innerText = "🥉";
+                rankBadge.className = "w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center text-4xl md:text-5xl mb-4 shadow-xl border-4 border-amber-700 bg-amber-50 mx-auto";
+                resultTitle.innerText = "Cukup Bagus! Kamu Juara 3";
+                resultSubtitle.innerText = "Jangan berkecil hati, mari pelajari lagi materi umbi-umbian!";
+            }
+
+            document.getElementById('finalRankText').innerText = `#${rank}`;
+            document.getElementById('finalScoreText').innerText = score;
+            const accuracy = Math.round((correctAnswersCount / questions.length) * 100);
+            document.getElementById('finalAccuracyText').innerText = `${accuracy}%`;
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        /* ==========================================
+           CONFETTI EFFECT FOR WINNER
+        ========================================== */
+        function launchConfetti() {
+            const canvas = document.getElementById('confettiCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+
+            const particles = [];
+            const colors = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+
+            for (let i = 0; i < 80; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vx: Math.random() * 4 - 2,
+                    vy: Math.random() * 4 + 2,
+                    rotate: Math.random() * 360
+                });
+            }
+
+            let animationFrame;
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.rotate += 5;
+
+                    if (p.y < canvas.height) alive = true;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rotate * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                if (alive) {
+                    animationFrame = requestAnimationFrame(render);
+                }
+            }
+            render();
+        }
+    </script>
+</body>
+</html>
